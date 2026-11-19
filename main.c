@@ -69,6 +69,7 @@ static int carregaFuncao(void *destino, const char *nome) {
 }
 
 static int carregarDLL(void) {
+    int ok = 1;
     dll = LoadLibraryA("E1_Impressora01.dll");
     if (dll == NULL) {
         printf("Nao foi possivel carregar E1_Impressora01.dll (erro %lu).\n", GetLastError());
@@ -76,7 +77,6 @@ static int carregarDLL(void) {
         return 0;
     }
 
-    int ok = 1;
     ok &= carregaFuncao(&AbreConexaoImpressora, "AbreConexaoImpressora");
     ok &= carregaFuncao(&FechaConexaoImpressora, "FechaConexaoImpressora");
     ok &= carregaFuncao(&ImpressaoTexto, "ImpressaoTexto");
@@ -128,9 +128,10 @@ static void capturarEntrada(const char *mensagem, char *destino, int tamanho) {
 static int lerInteiro(const char *mensagem) {
     char linha[50];
     char *fim;
+    long valor;
     while (1) {
         capturarEntrada(mensagem, linha, sizeof(linha));
-        long valor = strtol(linha, &fim, 10);
+        valor = strtol(linha, &fim, 10);
         if (linha[0] != '\0' && *fim == '\0') {
             return (int)valor;
         }
@@ -140,19 +141,23 @@ static int lerInteiro(const char *mensagem) {
 
 static char *lerArquivo(const char *caminho) {
     FILE *arq = fopen(caminho, "rb");
+    long tamanho;
+    char *conteudo;
+    size_t lidos;
+
     if (arq == NULL) {
         return NULL;
     }
     fseek(arq, 0, SEEK_END);
-    long tamanho = ftell(arq);
+    tamanho = ftell(arq);
     rewind(arq);
 
-    char *conteudo = (char *)malloc(tamanho + 1);
+    conteudo = (char *)malloc(tamanho + 1);
     if (conteudo == NULL) {
         fclose(arq);
         return NULL;
     }
-    size_t lidos = fread(conteudo, 1, tamanho, arq);
+    lidos = fread(conteudo, 1, tamanho, arq);
     conteudo[lidos] = '\0';
     fclose(arq);
     return conteudo;
@@ -163,9 +168,11 @@ static char *lerArquivo(const char *caminho) {
 int fazerLogin(void) {
     char usuario[50];
     char senha[50];
+    int tentativa;
+    int restantes;
 
     printf("=== LOGIN DO SISTEMA ===\n");
-    for (int tentativa = 1; tentativa <= 3; tentativa++) {
+    for (tentativa = 1; tentativa <= 3; tentativa++) {
         capturarEntrada("Usuario: ", usuario, sizeof(usuario));
         capturarEntrada("Senha: ", senha, sizeof(senha));
 
@@ -174,7 +181,7 @@ int fazerLogin(void) {
             return 1;
         }
 
-        int restantes = 3 - tentativa;
+        restantes = 3 - tentativa;
         if (restantes > 0) {
             printf("Usuario ou senha incorretos. Tentativas restantes: %d\n\n", restantes);
         }
@@ -199,8 +206,9 @@ void configurarConexao(void) {
 }
 
 void abrirConexao(void) {
+    int retorno;
     if (!conexaoAberta) {
-        int retorno = AbreConexaoImpressora(tipo, modelo, conexao, parametro);
+        retorno = AbreConexaoImpressora(tipo, modelo, conexao, parametro);
         if (retorno == 0) {
             conexaoAberta = 1;
             printf("Conexao aberta com sucesso.\n");
@@ -213,12 +221,13 @@ void abrirConexao(void) {
 }
 
 void fecharConexao(void) {
+    int retorno;
     if (!conexaoAberta) {
         printf("A conexao ja esta fechada.\n");
         return;
     }
 
-    int retorno = FechaConexaoImpressora();
+    retorno = FechaConexaoImpressora();
     if (retorno == 0) {
         conexaoAberta = 0;
         printf("Conexao fechada com sucesso.\n");
@@ -228,17 +237,22 @@ void fecharConexao(void) {
 }
 
 void imprimirTexto(void) {
+    char texto[200];
+    int copias;
+    int i;
+    int retorno;
+    int retCorte;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    char texto[200];
     capturarEntrada("Texto a imprimir: ", texto, sizeof(texto));
-    int copias = lerInteiro("Quantas copias? ");
+    copias = lerInteiro("Quantas copias? ");
 
-    for (int i = 1; i <= copias; i++) {
-        int retorno = ImpressaoTexto(texto, 1, 4, 0);
+    for (i = 1; i <= copias; i++) {
+        retorno = ImpressaoTexto(texto, 1, 4, 0);
         if (retorno >= 0) {
             printf("Copia %d impressa!\n", i);
         } else {
@@ -246,22 +260,24 @@ void imprimirTexto(void) {
         }
     }
 
-    int retCorte = Corte(5);
+    retCorte = Corte(5);
     if (retCorte != 0) {
         printf("Aviso: erro ao cortar papel. Codigo: %d\n", retCorte);
     }
 }
 
 void imprimirQRCode(void) {
+    char dados[256];
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    char dados[256];
     capturarEntrada("Conteudo do QR Code: ", dados, sizeof(dados));
 
-    int retorno = ImpressaoQRCode(dados, 6, 4);
+    retorno = ImpressaoQRCode(dados, 6, 4);
     if (retorno == 0) {
         printf("QR Code impresso com sucesso!\n");
     } else {
@@ -272,12 +288,14 @@ void imprimirQRCode(void) {
 }
 
 void imprimirCodigoBarras(void) {
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    int retorno = ImpressaoCodigoBarras(8, "{A012345678912", 100, 2, 3);
+    retorno = ImpressaoCodigoBarras(8, "{A012345678912", 100, 2, 3);
     if (retorno == 0) {
         printf("Codigo de barras impresso com sucesso!\n");
     } else {
@@ -288,18 +306,21 @@ void imprimirCodigoBarras(void) {
 }
 
 void imprimirXMLSAT(void) {
+    char *dadosXML;
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    char *dadosXML = lerArquivo("XMLSAT.xml");
+    dadosXML = lerArquivo("XMLSAT.xml");
     if (dadosXML == NULL) {
         printf("Nao foi possivel ler o arquivo XMLSAT.xml\n");
         return;
     }
 
-    int retorno = ImprimeXMLSAT(dadosXML, 0);
+    retorno = ImprimeXMLSAT(dadosXML, 0);
     Corte(5);
     free(dadosXML); /* Libera a memoria alocada */
 
@@ -311,18 +332,21 @@ void imprimirXMLSAT(void) {
 }
 
 void imprimirXMLCancelamentoSAT(void) {
+    char *dadosXML;
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    char *dadosXML = lerArquivo("CANC_SAT.xml");
+    dadosXML = lerArquivo("CANC_SAT.xml");
     if (dadosXML == NULL) {
         printf("Nao foi possivel ler o arquivo CANC_SAT.xml\n");
         return;
     }
 
-    int retorno = ImprimeXMLCancelamentoSAT(dadosXML, ASS_QRCODE, 0);
+    retorno = ImprimeXMLCancelamentoSAT(dadosXML, ASS_QRCODE, 0);
     Corte(5);
     free(dadosXML); /* Libera a memoria alocada */
 
@@ -334,12 +358,14 @@ void imprimirXMLCancelamentoSAT(void) {
 }
 
 void abrirGavetaElgin(void) {
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    int retorno = AbreGavetaElgin(1, 50, 50);
+    retorno = AbreGavetaElgin(1, 50, 50);
     if (retorno == 0) {
         printf("Gaveta Elgin aberta com sucesso!\n");
     } else {
@@ -348,12 +374,14 @@ void abrirGavetaElgin(void) {
 }
 
 void abrirGaveta(void) {
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    int retorno = AbreGaveta(1, 5, 10);
+    retorno = AbreGaveta(1, 5, 10);
     if (retorno == 0) {
         printf("Gaveta aberta com sucesso!\n");
     } else {
@@ -362,13 +390,16 @@ void abrirGaveta(void) {
 }
 
 void emitirSinalSonoro(void) {
+    int qtd;
+    int retorno;
+
     if (!conexaoAberta) {
         printf("Conexao fechada. Abra a conexao antes (opcao 2).\n");
         return;
     }
 
-    int qtd = lerInteiro("Quantidade de bips (1 a 63): ");
-    int retorno = SinalSonoro(qtd, 50, 5);
+    qtd = lerInteiro("Quantidade de bips (1 a 63): ");
+    retorno = SinalSonoro(qtd, 50, 5);
     if (retorno == 0) {
         printf("Sinal sonoro emitido com sucesso!\n");
     } else {
@@ -400,6 +431,8 @@ void exibirMenu(void) {
 /* ===================== Programa principal ===================== */
 
 int main(void) {
+    int opcao = -1;
+
     if (!carregarDLL()) {
         printf("Programa encerrado.\n");
         return 1;
@@ -411,7 +444,6 @@ int main(void) {
         return 1;
     }
 
-    int opcao = -1;
     while (opcao != 0) {
         exibirMenu();
         opcao = lerInteiro("\nDigite a opcao desejada: ");
@@ -451,7 +483,3 @@ int main(void) {
     FreeLibrary(dll);
     return 0;
 }
-```[cite: 1, 2, 3, 4, 5, 6, 7, 8, 10, 12]
-
----
-
