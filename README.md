@@ -149,8 +149,6 @@ Verifique se o arquivo `E1_Impressora01.dll` está na pasta de execução do pro
 
 **Erro relacionado à arquitetura da DLL**
 
-Confira se a arquitetura da DLL é compatível com a do compilador utilizado (x86 ou x64).
-
 **Erro ao localizar os arquivos XML**
 
 Verifique se `XMLSAT.xml` e `CANC_SAT.xml` estão disponíveis na pasta de execução do programa.
