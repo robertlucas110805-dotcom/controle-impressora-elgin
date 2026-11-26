@@ -158,7 +158,7 @@ Verifique se `XMLSAT.xml` e `CANC_SAT.xml` estão disponíveis na pasta de execu
 ## 👥 Integrantes do Grupo
 
 - Robert Lucas
-- Martinho
+- Apocalipse Martinho
 - Gabriel Silva Oliveira
 - Rafael Manuel
 
