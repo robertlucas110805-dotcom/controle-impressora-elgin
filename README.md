@@ -4,7 +4,7 @@ Sistema em linguagem C para controle de impressoras térmicas Elgin via DLL (`E1
 
 ## Integrantes do Grupo
 * Robert Lucas
-* Martinho
+* Apocalipse Martinho
 * Gabriel Silva Oliveira
 * Rafael Manuel
 
