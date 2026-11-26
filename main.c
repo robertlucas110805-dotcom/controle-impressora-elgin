@@ -1,17 +1,20 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
 
 /*
- * Controle da impressora Elgin (i8 / i9) em C, usando a DLL E1_Impressora01.dll.
+ * Controle da impressora Elgin (i8 / i9) em C,
+ * usando a DLL E1_Impressora01.dll.
  *
- * A DLL precisa estar na RAIZ do projeto (na mesma pasta de onde o programa e executado),
+ * A DLL precisa estar na raiz do projeto,
  * junto com os arquivos XMLSAT.xml e CANC_SAT.xml.
  *
- * IMPORTANTE: a DLL precisa ter a mesma arquitetura do compilador:
- *   - compilador de 32 bits (ex.: MinGW do Code::Blocks)  -> use a DLL da pasta x86
- *   - compilador de 64 bits (ex.: MSYS2 mingw64)          -> use a DLL da pasta x64
+ * IMPORTANTE:
+ * A DLL precisa ter a mesma arquitetura do compilador:
+ * - 32 bits: DLL da pasta x86
+ * - 64 bits: DLL da pasta x64
  */
 
 /* ===================== Ligacao com a DLL ===================== */
@@ -60,20 +63,24 @@ static HMODULE dll = NULL;
 
 static int carregaFuncao(void *destino, const char *nome) {
     FARPROC f = GetProcAddress(dll, nome);
+
     if (f == NULL) {
         printf("Comando '%s' nao encontrado na DLL.\n", nome);
         return 0;
     }
+
     *(FARPROC *)destino = f;
     return 1;
 }
 
 static int carregarDLL(void) {
     int ok = 1;
+
     dll = LoadLibraryA("E1_Impressora01.dll");
+
     if (dll == NULL) {
         printf("Nao foi possivel carregar E1_Impressora01.dll (erro %lu).\n", GetLastError());
-        printf("Confira: a DLL esta na raiz do projeto? Ela tem a mesma arquitetura (32/64 bits) do compilador?\n");
+        printf("Confira se a DLL esta na raiz do projeto e possui a mesma arquitetura do compilador.\n");
         return 0;
     }
 
@@ -96,18 +103,20 @@ static int carregarDLL(void) {
     ok &= carregaFuncao(&PosicaoImpressaoVertical, "PosicaoImpressaoVertical");
     ok &= carregaFuncao(&ImprimeXMLSAT, "ImprimeXMLSAT");
     ok &= carregaFuncao(&ImprimeXMLCancelamentoSAT, "ImprimeXMLCancelamentoSAT");
+
     return ok;
 }
 
 /* ===================== Variaveis do programa ===================== */
 
-static int conexaoAberta = 0;       /* 0 = fechada, 1 = aberta */
-static int tipo = 1;                /* 1 = USB, 2 = Serial, 3 = Rede... */
-static char modelo[50] = "i9";      /* "i8" ou "i9" */
+static int conexaoAberta = 0;
+static int tipo = 1;
+static char modelo[50] = "i9";
 static char conexao[50] = "USB";
 static int parametro = 0;
 
 /* Chave do QR Code usada no cancelamento SAT */
+
 static const char *ASS_QRCODE =
     "Q5DLkpdRijIRGY6YSSNsTWK1TztHL1vD0V1Jc4spo/CEUqICEb9SFy82ym8EhBRZjbh3btsZhF+sjHqEMR159i4agru9x6KsepK/"
     "q0E2e5xlU5cv3m1woYfgHyOkWDNcSdMsS6bBh2Bpq6s89yJ9Q6qh/J8YHi306ce9Tqb/drKvN2XdE5noRSS32TAWuaQEVd7u+"
@@ -118,10 +127,12 @@ static const char *ASS_QRCODE =
 
 static void capturarEntrada(const char *mensagem, char *destino, int tamanho) {
     printf("%s", mensagem);
+
     if (fgets(destino, tamanho, stdin) == NULL) {
         destino[0] = '\0';
         return;
     }
+
     destino[strcspn(destino, "\r\n")] = '\0';
 }
 
@@ -129,12 +140,16 @@ static int lerInteiro(const char *mensagem) {
     char linha[50];
     char *fim;
     long valor;
+
     while (1) {
         capturarEntrada(mensagem, linha, sizeof(linha));
+
         valor = strtol(linha, &fim, 10);
+
         if (linha[0] != '\0' && *fim == '\0') {
             return (int)valor;
         }
+
         printf("Digite apenas numeros!\n");
     }
 }
@@ -148,18 +163,23 @@ static char *lerArquivo(const char *caminho) {
     if (arq == NULL) {
         return NULL;
     }
+
     fseek(arq, 0, SEEK_END);
     tamanho = ftell(arq);
     rewind(arq);
 
     conteudo = (char *)malloc(tamanho + 1);
+
     if (conteudo == NULL) {
         fclose(arq);
         return NULL;
     }
+
     lidos = fread(conteudo, 1, tamanho, arq);
     conteudo[lidos] = '\0';
+
     fclose(arq);
+
     return conteudo;
 }
 
@@ -172,6 +192,7 @@ int fazerLogin(void) {
     int restantes;
 
     printf("=== LOGIN DO SISTEMA ===\n");
+
     for (tentativa = 1; tentativa <= 3; tentativa++) {
         capturarEntrada("Usuario: ", usuario, sizeof(usuario));
         capturarEntrada("Senha: ", senha, sizeof(senha));
@@ -182,12 +203,14 @@ int fazerLogin(void) {
         }
 
         restantes = 3 - tentativa;
+
         if (restantes > 0) {
             printf("Usuario ou senha incorretos. Tentativas restantes: %d\n\n", restantes);
         }
     }
 
     printf("Numero maximo de tentativas excedido.\n");
+
     return 0;
 }
 
@@ -196,9 +219,13 @@ int fazerLogin(void) {
 void configurarConexao(void) {
     if (!conexaoAberta) {
         tipo = lerInteiro("Digite o tipo de conexao (1 para USB, 2 para Serial, etc.): ");
+
         capturarEntrada("Digite o modelo da impressora: ", modelo, sizeof(modelo));
+
         capturarEntrada("Digite a porta de conexao (ex: USB): ", conexao, sizeof(conexao));
+
         parametro = lerInteiro("Digite o parametro adicional (ex: 0 para padrao): ");
+
         printf("Parametros de conexao configurados com sucesso.\n");
     } else {
         printf("Conexao ja configurada. Pronta para uso.\n");
@@ -207,8 +234,10 @@ void configurarConexao(void) {
 
 void abrirConexao(void) {
     int retorno;
+
     if (!conexaoAberta) {
         retorno = AbreConexaoImpressora(tipo, modelo, conexao, parametro);
+
         if (retorno == 0) {
             conexaoAberta = 1;
             printf("Conexao aberta com sucesso.\n");
@@ -222,12 +251,14 @@ void abrirConexao(void) {
 
 void fecharConexao(void) {
     int retorno;
+
     if (!conexaoAberta) {
         printf("A conexao ja esta fechada.\n");
         return;
     }
 
     retorno = FechaConexaoImpressora();
+
     if (retorno == 0) {
         conexaoAberta = 0;
         printf("Conexao fechada com sucesso.\n");
@@ -236,10 +267,10 @@ void fecharConexao(void) {
     }
 }
 
+/* ===================== Impressao de Texto ===================== */
+
 void imprimirTexto(void) {
     char texto[200];
-    int copias;
-    int i;
     int retorno;
     int retCorte;
 
@@ -249,22 +280,23 @@ void imprimirTexto(void) {
     }
 
     capturarEntrada("Texto a imprimir: ", texto, sizeof(texto));
-    copias = lerInteiro("Quantas copias? ");
 
-    for (i = 1; i <= copias; i++) {
-        retorno = ImpressaoTexto(texto, 1, 4, 0);
-        if (retorno >= 0) {
-            printf("Copia %d impressa!\n", i);
-        } else {
-            printf("Erro ao imprimir copia %d. Codigo: %d\n", i, retorno);
-        }
+    retorno = ImpressaoTexto(texto, 1, 4, 0);
+
+    if (retorno >= 0) {
+        printf("Texto impresso com sucesso!\n");
+    } else {
+        printf("Erro ao imprimir texto. Codigo: %d\n", retorno);
     }
 
     retCorte = Corte(5);
+
     if (retCorte != 0) {
         printf("Aviso: erro ao cortar papel. Codigo: %d\n", retCorte);
     }
 }
+
+/* ===================== Impressao de QR Code ===================== */
 
 void imprimirQRCode(void) {
     char dados[256];
@@ -278,6 +310,7 @@ void imprimirQRCode(void) {
     capturarEntrada("Conteudo do QR Code: ", dados, sizeof(dados));
 
     retorno = ImpressaoQRCode(dados, 6, 4);
+
     if (retorno == 0) {
         printf("QR Code impresso com sucesso!\n");
     } else {
@@ -286,6 +319,8 @@ void imprimirQRCode(void) {
 
     Corte(5);
 }
+
+/* ===================== Impressao de Codigo de Barras ===================== */
 
 void imprimirCodigoBarras(void) {
     int retorno;
@@ -296,6 +331,7 @@ void imprimirCodigoBarras(void) {
     }
 
     retorno = ImpressaoCodigoBarras(8, "{A012345678912", 100, 2, 3);
+
     if (retorno == 0) {
         printf("Codigo de barras impresso com sucesso!\n");
     } else {
@@ -304,6 +340,8 @@ void imprimirCodigoBarras(void) {
 
     Corte(5);
 }
+
+/* ===================== Impressao XML SAT ===================== */
 
 void imprimirXMLSAT(void) {
     char *dadosXML;
@@ -315,14 +353,17 @@ void imprimirXMLSAT(void) {
     }
 
     dadosXML = lerArquivo("XMLSAT.xml");
+
     if (dadosXML == NULL) {
         printf("Nao foi possivel ler o arquivo XMLSAT.xml\n");
         return;
     }
 
     retorno = ImprimeXMLSAT(dadosXML, 0);
+
     Corte(5);
-    free(dadosXML); /* Libera a memoria alocada */
+
+    free(dadosXML);
 
     if (retorno == 0) {
         printf("XML SAT impresso com sucesso!\n");
@@ -330,6 +371,8 @@ void imprimirXMLSAT(void) {
         printf("Erro ao imprimir XML SAT. Codigo: %d\n", retorno);
     }
 }
+
+/* ===================== Impressao XML Cancelamento SAT ===================== */
 
 void imprimirXMLCancelamentoSAT(void) {
     char *dadosXML;
@@ -341,14 +384,17 @@ void imprimirXMLCancelamentoSAT(void) {
     }
 
     dadosXML = lerArquivo("CANC_SAT.xml");
+
     if (dadosXML == NULL) {
         printf("Nao foi possivel ler o arquivo CANC_SAT.xml\n");
         return;
     }
 
     retorno = ImprimeXMLCancelamentoSAT(dadosXML, ASS_QRCODE, 0);
+
     Corte(5);
-    free(dadosXML); /* Libera a memoria alocada */
+
+    free(dadosXML);
 
     if (retorno == 0) {
         printf("XML de Cancelamento SAT impresso com sucesso!\n");
@@ -356,6 +402,8 @@ void imprimirXMLCancelamentoSAT(void) {
         printf("Erro ao imprimir XML de Cancelamento SAT. Codigo: %d\n", retorno);
     }
 }
+
+/* ===================== Abertura de Gaveta ===================== */
 
 void abrirGavetaElgin(void) {
     int retorno;
@@ -366,6 +414,7 @@ void abrirGavetaElgin(void) {
     }
 
     retorno = AbreGavetaElgin(1, 50, 50);
+
     if (retorno == 0) {
         printf("Gaveta Elgin aberta com sucesso!\n");
     } else {
@@ -382,12 +431,15 @@ void abrirGaveta(void) {
     }
 
     retorno = AbreGaveta(1, 5, 10);
+
     if (retorno == 0) {
         printf("Gaveta aberta com sucesso!\n");
     } else {
         printf("Erro ao abrir gaveta. Codigo: %d\n", retorno);
     }
 }
+
+/* ===================== Sinal Sonoro ===================== */
 
 void emitirSinalSonoro(void) {
     int qtd;
@@ -399,7 +451,9 @@ void emitirSinalSonoro(void) {
     }
 
     qtd = lerInteiro("Quantidade de bips (1 a 63): ");
+
     retorno = SinalSonoro(qtd, 50, 5);
+
     if (retorno == 0) {
         printf("Sinal sonoro emitido com sucesso!\n");
     } else {
@@ -407,10 +461,13 @@ void emitirSinalSonoro(void) {
     }
 }
 
+/* ===================== Menu Principal ===================== */
+
 void exibirMenu(void) {
     printf("\n*************************************************\n");
     printf("**************** MENU IMPRESSORA ****************\n");
     printf("*************************************************\n");
+
     printf("Status da conexao: %s\n\n", conexaoAberta ? "ABERTA" : "FECHADA");
 
     printf("1  - Configurar Conexao\n");
@@ -425,16 +482,18 @@ void exibirMenu(void) {
     printf("10 - Abrir Gaveta\n");
     printf("11 - Emitir Sinal Sonoro\n");
     printf("0  - Sair\n");
+
     printf("-------------------------------------------------\n");
 }
 
-/* ===================== Programa principal ===================== */
+/* ===================== Programa Principal ===================== */
 
 int main(void) {
     int opcao = -1;
 
     if (!carregarDLL()) {
         printf("Programa encerrado.\n");
+        FreeLibrary(dll);
         return 1;
     }
 
@@ -446,40 +505,55 @@ int main(void) {
 
     while (opcao != 0) {
         exibirMenu();
+
         opcao = lerInteiro("\nDigite a opcao desejada: ");
 
         if (opcao == 1) {
             configurarConexao();
-        } else if (opcao == 2) {
+        }
+        else if (opcao == 2) {
             abrirConexao();
-        } else if (opcao == 3) {
+        }
+        else if (opcao == 3) {
             fecharConexao();
-        } else if (opcao == 4) {
+        }
+        else if (opcao == 4) {
             imprimirTexto();
-        } else if (opcao == 5) {
+        }
+        else if (opcao == 5) {
             imprimirQRCode();
-        } else if (opcao == 6) {
+        }
+        else if (opcao == 6) {
             imprimirCodigoBarras();
-        } else if (opcao == 7) {
+        }
+        else if (opcao == 7) {
             imprimirXMLSAT();
-        } else if (opcao == 8) {
+        }
+        else if (opcao == 8) {
             imprimirXMLCancelamentoSAT();
-        } else if (opcao == 9) {
+        }
+        else if (opcao == 9) {
             abrirGavetaElgin();
-        } else if (opcao == 10) {
+        }
+        else if (opcao == 10) {
             abrirGaveta();
-        } else if (opcao == 11) {
+        }
+        else if (opcao == 11) {
             emitirSinalSonoro();
-        } else if (opcao == 0) {
+        }
+        else if (opcao == 0) {
             if (conexaoAberta) {
                 fecharConexao();
             }
+
             printf("Encerrando o programa...\n");
-        } else {
+        }
+        else {
             printf("Opcao invalida. Tente novamente.\n");
         }
     }
 
     FreeLibrary(dll);
+
     return 0;
 }
